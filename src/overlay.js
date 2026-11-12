@@ -116,7 +116,7 @@ export class Overlay {
   // TAP：毛笔叉 + 描边（保护套 = 白圈，双押 = 金圈）
   cross(n, x, y, R, lit, a, k = 1) {
     const g = this.g, r = R * k, hs = R * 3.7 * k;
-    g.globalAlpha = a * 0.85; g.drawImage(this.S.paper, x - hs / 2, y - hs / 2, hs, hs);
+    g.globalAlpha = a * 0.4; g.drawImage(this.S.paper, x - hs / 2, y - hs / 2, hs, hs);
     this.stampX(g, n.id % 2, x, y, r, lit, a);
     this.outlines(n, x, y, r * 1.22, a);
   }
@@ -165,7 +165,7 @@ export class Overlay {
   // HOLD：音符本身就是八卦阵。没按时静止；按住时转起来；按到外圈细线走完
   drawHold(n, x, y, R, t, u, a) {
     const g = this.g, s = n.s, k = BAGUA_K * (n.bagua ? 1.3 : 1), r = R * k, act = t >= n.t, rem = act ? Math.max(0, 1 - (t - n.t) / (n.end - n.t)) : 1;
-    const hs = r * 2.5; g.globalAlpha = a * (s.cov ? 0.2 : 0.6); g.drawImage(this.S.paper, x - hs / 2, y - hs / 2, hs, hs);
+    const hs = r * 2.5; g.globalAlpha = a * (s.cov ? 0.1 : 0.25); g.drawImage(this.S.paper, x - hs / 2, y - hs / 2, hs, hs);
     const sc = s.cov ? 1.04 + 0.02 * Math.sin(t * 34) : 1;
     g.save(); g.translate(x, y); g.rotate(s.cov ? (t - n.t) * 4.2 + hash(n.id, 2) : hash(n.id, 2) * 0.6); g.globalAlpha = a * (s.cov ? 0.5 : 0.92); g.drawImage(this.S.bagua, -r * sc, -r * sc, r * 2 * sc, r * 2 * sc); g.restore();
     if (n.ex) { g.globalAlpha = a; g.strokeStyle = WHITE; g.lineWidth = R * 0.12; g.beginPath(); g.arc(x, y, r + R * 0.12, 0, TAU); g.stroke(); }
@@ -184,12 +184,11 @@ export class Overlay {
     const g = this.g, W = this.W, H = this.H, tab = n.tab, f = Math.min(1, Math.max(0, (t - n.t) / (n.end - n.t))), s0 = f * tab[tab.length - 1].s, p = this._p;
     const pre = t < n.t ? 0.5 + 0.5 * Math.max(0, u) * Math.max(0, u) : 1;                // 还没开始的轨道画淡一些
     const path = () => { g.beginPath(); dragPos(n, f, p); g.moveTo(p.x * W, p.y * H); for (const q of tab) if (q.s > s0) g.lineTo(q.x * W, q.y * H); };
-    g.globalAlpha = a * 0.85 * pre; g.strokeStyle = PAPER; g.lineWidth = R * 2.1; path(); g.stroke();             // 纸色托底
-    g.globalAlpha = a * 0.22 * pre; g.strokeStyle = INK; g.lineWidth = R * 1.7; path(); g.stroke();               // 淡墨轨道
-    g.globalAlpha = a * 0.5 * pre; g.lineWidth = R * 0.06; path(); g.stroke();                                    // 中线
+    g.globalAlpha = a * 0.34 * pre; g.strokeStyle = '#000'; g.lineWidth = R * 2.1; path(); g.stroke();            // 半透明的暗色轨道，不挡住后面的 3D 画面
+    g.globalAlpha = a * 0.55 * pre; g.strokeStyle = PAPER; g.lineWidth = R * 0.09; g.setLineDash([R * 0.5, R * 0.35]); g.lineDashOffset = -t * R * 3; path(); g.stroke(); g.setLineDash([]);   // 流动的中线
     dragPos(n, f, p); const x = p.x * W, y = p.y * H;
     const r = R * 1.15, cov = n.s.cov, hs = r * 2.6;                                       // 小八卦阵：按住时转动
-    g.globalAlpha = a * 0.6; g.drawImage(this.S.paper, x - hs / 2, y - hs / 2, hs, hs);
+    g.globalAlpha = a * 0.25; g.drawImage(this.S.paper, x - hs / 2, y - hs / 2, hs, hs);
     g.save(); g.translate(x, y); g.rotate(cov ? (t - n.t) * 4.2 : hash(n.id, 2) * 0.6); g.globalAlpha = a; g.drawImage(this.S.bagua, -r, -r, r * 2, r * 2); g.restore();
     this.outlines(n, x, y, r, a);
     if (cov) { g.globalAlpha = a; g.strokeStyle = RED; g.lineWidth = R * 0.09; g.beginPath(); g.arc(x, y, r + R * 0.1, 0, TAU); g.stroke(); }

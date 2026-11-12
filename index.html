@@ -153,6 +153,10 @@ button { font-family:var(--kai); cursor:pointer; touch-action:manipulation; }
 </div></div>
 <div id="count" class="hidden"></div>
 <div id="rotate"><i>▭</i>请将设备横屏</div>
-<script type="module" src="./src/main.js"></script>
+<div id="loading" style="position:absolute;inset:0;z-index:50;background:#0b0907;color:#d8c9a8;display:flex;align-items:center;justify-content:center;font-size:22px;letter-spacing:.5em">铸剑中…</div>
+<script type="module">
+// 先让「铸剑中」画出来，再开始耗时几秒的建模
+setTimeout(() => import('./src/main.js').then(() => document.getElementById('loading').remove(), e => { document.getElementById('loading').textContent = '加载失败：' + e.message; }), 60);
+</script>
 </body>
 </html>
