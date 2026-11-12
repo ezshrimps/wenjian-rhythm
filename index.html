@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>问剑</title>
+<script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }</script>
+<style>
+:root { --ink:#17171a; --ink2:#55524b; --paper:#f3ecdc; --paper2:#e9dfc9; --red:#c22e1c; --red-d:#8f1d10; --gold:#b8902e;
+  --kai:"Kaiti SC","STKaiti","KaiTi","Songti SC","STSong","Noto Serif SC",serif; --song:"Songti SC","STSong","Noto Serif SC","SimSun",serif; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+html,body { margin:0; height:100%; overflow:hidden; background:#ece4d4; font-family:var(--song); color:var(--ink); touch-action:none; overscroll-behavior:none; position:fixed; inset:0; }
+#gl, #hud { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+#hud { z-index:2; }
+.hidden { display:none !important; }
+/* 受击：墨与朱从四角洇进来 */
+#vignette { position:absolute; inset:0; z-index:3; pointer-events:none; opacity:0; transition:opacity .45s ease-out;
+  background:radial-gradient(ellipse at center, rgba(120,20,10,0) 42%, rgba(150,26,14,.42) 78%, rgba(20,16,16,.78) 100%); }
+#vignette.on { opacity:1; transition:none; }
+
+/* 顶部：题款式的 HUD */
+#top { position:absolute; z-index:4; left:0; right:0; top:0; padding:calc(12px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 0 calc(20px + env(safe-area-inset-left)); display:grid; grid-template-columns:1fr minmax(300px,44%) 1fr; align-items:start; pointer-events:none; }
+.glow { text-shadow:0 0 5px var(--paper), 0 0 5px var(--paper), 0 0 10px var(--paper), 0 0 16px var(--paper); }
+.lbl { font:700 13px var(--kai); letter-spacing:.35em; color:var(--ink2); }
+#score b { display:block; font:900 clamp(22px,3.6vh,34px)/1.15 var(--kai); font-variant-numeric:tabular-nums; }
+#comboBox { text-align:right; padding-right:58px; transition:opacity .2s; }
+#comboBox b { display:block; font:900 clamp(34px,6vh,56px)/1 var(--kai); color:var(--red); font-variant-numeric:tabular-nums; }
+#comboBox.pulse b { animation:pulse .16s ease-out; }
+@keyframes pulse { from { transform:scale(1.3); } to { transform:scale(1); } }
+#bossbar { text-align:center; }
+#bossname { font:900 clamp(18px,3vh,26px) var(--kai); letter-spacing:.5em; text-indent:.5em; margin-bottom:6px; }
+#bossname i { font-style:normal; display:inline-block; margin-left:.2em; padding:1px 4px 2px; font-size:.5em; letter-spacing:.1em; text-indent:0; color:var(--paper); background:var(--red); vertical-align:middle; text-shadow:none; }
+/* 生命：一道朱色飞白，被削减后露出淡墨底 */
+#hp { position:relative; height:clamp(10px,1.6vh,14px); background:rgba(23,23,26,.16); clip-path:polygon(0 30%,1.5% 0,97% 8%,100% 45%,98.5% 100%,2% 92%); }
+#hpghost, #hpfill { position:absolute; left:0; top:0; bottom:0; width:100%; }
+#hpghost { background:var(--ink); opacity:.55; transition:width .7s ease-out .25s; }
+#hpfill { transition:width .12s ease-out; background:
+  repeating-linear-gradient(92deg, rgba(243,236,220,0) 0 37px, rgba(243,236,220,.28) 37px 39px, rgba(243,236,220,0) 39px 71px, rgba(243,236,220,.18) 71px 72px),
+  linear-gradient(180deg,#d8402a,#b3260f 60%,#8f1d10); }
+#btnPause { pointer-events:auto; position:absolute; right:calc(16px + env(safe-area-inset-right)); top:calc(12px + env(safe-area-inset-top)); width:42px; height:42px; border:1.5px solid var(--ink); background:rgba(243,236,220,.75); color:var(--ink); font:900 15px var(--song); letter-spacing:1px; border-radius:50%; }
+#demoTag { position:absolute; z-index:4; left:50%; bottom:calc(14px + env(safe-area-inset-bottom)); transform:translateX(-50%); padding:4px 16px; background:rgba(243,236,220,.8); border:1px solid var(--ink2); font:700 14px var(--kai); letter-spacing:.4em; text-indent:.4em; pointer-events:none; }
+
+/* 幕间：一行大字 + 朱印 */
+#banner { position:absolute; z-index:5; left:0; right:0; top:32%; text-align:center; pointer-events:none; opacity:0; }
+#banner.show { animation:banner 2.6s ease-out forwards; }
+#banner .t { display:inline-block; font:900 clamp(40px,10vh,88px) var(--kai); letter-spacing:.3em; text-indent:.3em; color:var(--ink); padding:0 .4em; background:linear-gradient(90deg,transparent,rgba(243,236,220,.82) 20%,rgba(243,236,220,.82) 80%,transparent); }
+#banner .s { margin-top:10px; font:700 clamp(16px,2.8vh,24px) var(--kai); letter-spacing:.5em; text-indent:.5em; color:var(--ink2); }
+#banner.rage .t { color:var(--red-d); }
+@keyframes banner { 0% { opacity:0; transform:scale(1.2); filter:blur(6px); } 14% { opacity:1; transform:scale(1); filter:none; } 78% { opacity:1; } 100% { opacity:0; } }
+
+/* 面板：一张裱好的纸 */
+.screen { position:absolute; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; }
+.card { position:relative; background:linear-gradient(180deg,rgba(247,241,227,.97),rgba(238,229,208,.97)); border:1.5px solid var(--ink); outline:1px solid rgba(23,23,26,.35); outline-offset:5px; box-shadow:0 18px 50px rgba(23,23,26,.28); padding:26px 36px; }
+button { font-family:var(--kai); cursor:pointer; touch-action:manipulation; }
+.btn { display:block; min-width:230px; padding:12px 30px; margin:12px auto 0; font:900 22px var(--kai); letter-spacing:.4em; text-indent:.4em; color:var(--paper); background:var(--red); border:none; box-shadow:inset 0 0 0 2px var(--red), inset 0 0 0 3.5px rgba(243,236,220,.75), 0 4px 0 var(--red-d), 0 10px 22px rgba(143,29,16,.3); border-radius:2px; }
+.btn:active { transform:translateY(3px); box-shadow:inset 0 0 0 2px var(--red), inset 0 0 0 3.5px rgba(243,236,220,.75), 0 1px 0 var(--red-d); }
+.btn.ghost { background:rgba(243,236,220,.86); color:var(--ink); box-shadow:inset 0 0 0 1.5px var(--ink), 0 4px 0 rgba(23,23,26,.55); font-size:18px; }
+.btn.ghost:active { box-shadow:inset 0 0 0 1.5px var(--ink), 0 1px 0 rgba(23,23,26,.55); }
+
+/* 标题：竖排题字 */
+#title { justify-content:space-between; align-items:flex-end; padding:0 calc(6vw + env(safe-area-inset-right)) calc(9vh + env(safe-area-inset-bottom)) calc(6vw + env(safe-area-inset-left)); background:linear-gradient(90deg,rgba(243,236,220,.6) 0%,rgba(243,236,220,0) 30%,rgba(243,236,220,0) 62%,rgba(243,236,220,.72) 88%); }
+#title .col { display:flex; align-items:center; gap:3vw; align-self:center; }
+#title h1 { margin:0; writing-mode:vertical-rl; font:900 clamp(96px,26vh,210px)/1 var(--kai); letter-spacing:.08em; color:var(--ink); text-shadow:3px 3px 0 rgba(23,23,26,.12); }
+#title .side { writing-mode:vertical-rl; font:700 clamp(15px,2.6vh,22px) var(--kai); letter-spacing:.6em; color:var(--ink2); display:flex; align-items:center; gap:14px; }
+#title .seal { writing-mode:vertical-rl; display:inline-block; padding:8px 5px; font:900 clamp(15px,2.5vh,21px)/1.1 var(--kai); letter-spacing:.12em; color:var(--paper); background:var(--red); box-shadow:inset 0 0 0 2px var(--red), inset 0 0 0 3px rgba(243,236,220,.7); }
+#title .menu { display:flex; flex-direction:column; align-items:stretch; }
+#title .menu .btn { margin:0 0 14px; }
+#offsetRow { margin-top:6px; display:flex; align-items:center; justify-content:center; gap:10px; font:700 14px var(--kai); letter-spacing:.15em; color:var(--ink2); }
+#offsetRow button { width:34px; height:30px; border:1px solid var(--ink2); background:rgba(243,236,220,.8); color:var(--ink); font:700 17px var(--song); border-radius:2px; }
+#offsetRow b { min-width:62px; text-align:center; color:var(--red-d); font-variant-numeric:tabular-nums; }
+#title .tip { margin-top:10px; max-width:250px; font:400 12.5px/1.6 var(--song); color:var(--ink2); text-align:center; }
+
+/* 教学 */
+#lesson { background:rgba(236,228,212,.45); }
+#lesson .card { width:min(660px,86vw); text-align:center; }
+#lesson .tag { display:inline-block; padding:3px 12px 4px; font:900 14px var(--kai); letter-spacing:.3em; text-indent:.3em; }
+#lesson .tag.def { color:var(--ink); border:1.5px solid var(--ink); background:#fff; border-radius:20px; } #lesson .tag.atk { color:var(--paper); background:var(--red); }
+#lesson h2 { margin:10px 0 2px; font:900 36px var(--kai); letter-spacing:.2em; text-indent:.2em; }
+#lesson .en { font:400 12px var(--song); letter-spacing:.4em; color:var(--ink2); }
+#lesson .demo { display:block; margin:12px auto 4px; width:380px; height:152px; max-width:100%; }
+#lesson p { margin:8px 0 2px; font-size:17px; line-height:1.8; text-align:left; }
+#lesson p b { color:var(--red-d); }
+#lesson .steps { margin-top:10px; padding:9px 14px; border-left:3px solid var(--red); background:rgba(23,23,26,.05); font-size:15px; text-align:left; line-height:1.7; color:#3a3833; }
+#lesson .steps b { color:var(--red-d); }
+
+/* 结算 */
+#result { background:rgba(236,228,212,.35); }
+#result .card { width:min(700px,88vw); text-align:center; }
+#result h2 { margin:0; font:900 52px var(--kai); letter-spacing:.35em; text-indent:.35em; }
+#result h2.lose { color:var(--ink2); }
+#result .big { display:flex; justify-content:center; align-items:center; gap:30px; margin:14px 0 8px; }
+#rank { font:900 78px/1 var(--kai); color:var(--paper); background:var(--red); padding:10px 18px 14px; min-width:150px; box-shadow:inset 0 0 0 3px var(--red), inset 0 0 0 5px rgba(243,236,220,.75); transform:rotate(-3deg); }
+#racc { font:900 42px var(--kai); font-variant-numeric:tabular-nums; } #racc small { display:block; font:400 13px var(--song); letter-spacing:.4em; color:var(--ink2); }
+#rgrid { display:grid; grid-template-columns:repeat(5,1fr); margin:14px 0 6px; border-top:1px solid rgba(23,23,26,.35); border-bottom:1px solid rgba(23,23,26,.35); }
+#rgrid div { padding:9px 0; font:700 14px var(--kai); letter-spacing:.3em; text-indent:.3em; color:var(--ink2); } #rgrid div + div { border-left:1px solid rgba(23,23,26,.18); } #rgrid b { display:block; font:900 28px var(--kai); letter-spacing:0; text-indent:0; color:var(--ink); }
+#rmeta { font-size:14px; color:var(--ink2); letter-spacing:.06em; margin-bottom:4px; }
+#result .row, #pause .row { display:flex; gap:16px; justify-content:center; } #result .btn, #pause .btn { min-width:180px; }
+#pause { background:rgba(236,228,212,.6); } #pause .card { text-align:center; } #pause h2 { margin:0 0 4px; font:900 38px var(--kai); letter-spacing:.5em; text-indent:.5em; }
+#count { position:absolute; inset:0; z-index:12; display:flex; align-items:center; justify-content:center; font:900 26vh var(--kai); color:var(--ink); text-shadow:0 0 30px var(--paper), 0 0 30px var(--paper); pointer-events:none; }
+#rotate { position:absolute; inset:0; z-index:50; display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px; background:var(--paper); color:var(--ink); font:900 28px var(--kai); letter-spacing:.3em; }
+#rotate i { font-style:normal; font-size:64px; animation:rot 1.6s ease-in-out infinite alternate; } @keyframes rot { to { transform:rotate(90deg); } }
+@media (orientation:portrait) and (max-width:1100px) { #rotate { display:flex; } }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="hud"></canvas>
+<div id="vignette"></div>
+
+<div id="top" class="hidden">
+  <div id="score" class="glow"><span class="lbl">达成</span><b id="acc">0.0000%</b></div>
+  <div id="bossbar"><div id="bossname" class="glow">墨尊<i>无相</i></div><div id="hp"><div id="hpghost"></div><div id="hpfill"></div></div></div>
+  <div id="comboBox" class="glow"><b id="combo">0</b><span class="lbl">连斩</span></div>
+  <button id="btnPause" aria-label="暂停">Ⅱ</button>
+</div>
+<div id="demoTag" class="hidden">自动演示</div>
+<div id="banner"><div class="t"></div><div class="s"></div></div>
+
+<div id="lesson" class="screen hidden"><div class="card">
+  <span class="tag" id="lsTag"></span>
+  <h2 id="lsTitle"></h2><div class="en" id="lsEn"></div>
+  <canvas class="demo" id="lsDemo" width="760" height="304"></canvas>
+  <p id="lsText"></p><div class="steps" id="lsSteps"></div>
+  <button class="btn" id="lsGo">开始练习</button>
+</div></div>
+
+<div id="title" class="screen">
+  <div class="menu">
+    <button class="btn" id="btnStart">入局</button>
+    <button class="btn ghost" id="btnSkip">跳过教学</button>
+    <button class="btn ghost" id="btnDemo">观摩演示</button>
+    <div id="offsetRow">判定偏移 <button id="offDn">−</button><b id="offVal">0 ms</b><button id="offUp">＋</button></div>
+    <div class="tip">总是偏「慢」就调大，偏「快」就调小<br>请横屏并打开声音</div>
+  </div>
+  <div class="col"><div class="side"><span class="seal">墨尊无相</span>一剑问天 · 攻守之间见节拍</div>
+  <h1>问剑</h1></div>
+</div>
+
+<div id="result" class="screen hidden"><div class="card">
+  <h2 id="rTitle"></h2>
+  <div class="big"><div id="rank"></div><div id="racc"></div></div>
+  <div id="rgrid"></div><div id="rmeta"></div>
+  <div class="row"><button class="btn" id="btnRetry">再战</button><button class="btn ghost" id="btnHome">返回</button></div>
+</div></div>
+
+<div id="pause" class="screen hidden"><div class="card">
+  <h2>收剑</h2>
+  <button class="btn" id="btnResume">继续</button>
+  <div class="row"><button class="btn ghost" id="btnRestart">重新开始</button><button class="btn ghost" id="btnQuit">返回</button></div>
+</div></div>
+<div id="count" class="hidden"></div>
+<div id="rotate"><i>▭</i>请将设备横屏</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

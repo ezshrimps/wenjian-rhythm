@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>水彩叠色预览</title>
+<style>
+  body { margin:0; background:#efe8d8; font-family:"Kaiti SC","STKaiti","KaiTi",serif; color:#17171a; }
+  h1 { font-size:22px; margin:18px 24px 4px; } p { margin:0 24px 12px; font-size:15px; color:#55524b; }
+  .row { display:flex; flex-wrap:wrap; gap:18px; padding:14px 24px; align-items:center; }
+  .dark { background:#1b1b1e; } .dark span { color:#e9dfc9; }
+  figure { margin:0; text-align:center; } figure span { display:block; font-size:14px; margin-top:4px; }
+  canvas { display:block; }
+</style></head><body>
+<h1>水彩叠色的圆（代码逐像素生成）</h1>
+<p>每次刷新形状都略有不同。上排是不同的随机形状，下排是放在 Boss 黑袍颜色上的样子和游戏里的实际大小。</p>
+<div class="row" id="a"></div>
+<div class="row dark" id="b"></div>
+<script type="module">
+  import { makeWash, WASH_RED, WASH_INK } from './src/wash.js';
+  const add = (parent, cv, css, label) => { const f = document.createElement('figure'); cv.style.width = cv.style.height = css + 'px'; f.appendChild(cv); const s = document.createElement('span'); s.textContent = label; f.appendChild(s); document.getElementById(parent).appendChild(f); };
+  const seed = Math.random() * 100;
+  for (let i = 0; i < 3; i++) add('a', makeWash(640, 210, seed + i * 3.7), 320, '朱红 · 形状 ' + (i + 1));
+  add('a', makeWash(640, 210, seed + 20, WASH_INK), 320, '同样的画法换成墨色');
+  for (let i = 0; i < 2; i++) add('b', makeWash(640, 210, seed + i * 3.7), 320, '压在黑底上');
+  for (let i = 0; i < 5; i++) add('b', makeWash(320, 105, seed + 40 + i * 2.3), 120, '游戏里的大小');
+</script></body></html>
